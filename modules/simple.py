@@ -8,6 +8,8 @@ from networks.ae import Autoencoder
 
 class SimpleModule(pl.LightningModule):
     def __init__(self, lr, optim, scheduler, **kwargs): #TODO add arguments included in parser
+        super().__init__()
+        
         self._lr = lr
         self._optim = optim
         self._scheduler = scheduler

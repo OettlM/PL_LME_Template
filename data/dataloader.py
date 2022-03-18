@@ -11,6 +11,8 @@ from data.dataset import MapStyleDataset
 
 class SimpleDataloader(pl.LightningDataModule):
     def __init__(self, data_dir, batch_size, **kwargs): #TODO add arguments included in parser
+        super().__init__()
+        
         self._data_dir = data_dir
         self._batch_size = batch_size
 
