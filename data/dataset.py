@@ -11,7 +11,7 @@ class MapStyleDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._img_list)
 
-    def __getItem__(self, idx):
+    def __getitem__(self, idx):
         img = self._img_list[idx]
 
         # if imgs are not pre-loaded, load them here
