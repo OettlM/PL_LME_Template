@@ -1,18 +1,26 @@
+import imp
 import torch
 import math
+import cv2
+import numpy as np
 
 
 
 class MapStyleDataset(torch.utils.data.Dataset):
-    def __init__(self, img_list, transforms=None):
+    def __init__(self, img_list, transforms=None, compressed=True):
         self._img_list = img_list
         self._transforms = transforms
+
+        self._compressed = compressed
 
     def __len__(self):
         return len(self._img_list)
 
     def __getitem__(self, idx):
         img = self._img_list[idx]
+
+        if self._compressed:
+            img = cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR)[:,:,::-1]
 
         # if imgs are not pre-loaded, load them here
 
@@ -24,10 +32,12 @@ class MapStyleDataset(torch.utils.data.Dataset):
 
 
 class IterStyleDataset(torch.utils.data.IterableDataset):
-    def __init__(self, img_list, transforms=None):
+    def __init__(self, img_list, transforms=None, compressed=True):
         self._img_list = img_list
         self._transforms = transforms
-    
+
+        self._compressed = compressed
+
     def __iter__(self):
         # create iterator function
         worker_info = torch.utils.data.get_worker_info()
@@ -48,7 +58,8 @@ class IterStyleDataset(torch.utils.data.IterableDataset):
 
     def image_yielder(self, imgs):
         for img in imgs:
-            # if imgs are not pre-loaded, load them here
+            if self._compressed:
+                img = cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR)[:,:,::-1]
 
             if self._transforms is not None:
                 img = self._transforms(img)

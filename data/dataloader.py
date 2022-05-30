@@ -16,6 +16,8 @@ class SimpleDataloader(pl.LightningDataModule):
         self._data_dir = data_dir
         self._batch_size = batch_size
 
+        self._compressed = True
+
         self._train_f = None
         self._eval_f = None
 
@@ -41,11 +43,19 @@ class SimpleDataloader(pl.LightningDataModule):
         # if our data is small, we might wanna load it once here and keep it in RAM memory
         self._train_img = []
         for file in self._train_f:
-            self._train_img.append(mpimg.imread(file))
+            if self._compressed:
+                with open(file,'rb') as f:
+                    self._train_img.append(f.read())
+            else:
+                self._train_img.append(mpimg.imread(file))
 
         self._eval_img = []
         for file in self._eval_f:
-            self._eval_img.append(mpimg.imread(file))
+            if self._compressed:
+                with open(file,'rb') as f:
+                    self._eval_img.append(f.read())
+            else:
+                self._eval_img.append(mpimg.imread(file))
 
     def setup(self, stage):
         # stuff that is performed on every gpu, e.g.: count number of classes, build vocabulary, perform train/val/test splits
@@ -55,8 +65,8 @@ class SimpleDataloader(pl.LightningDataModule):
         trans_eval = transforms.Compose([transforms.ToTensor()])
 
         # create datasets, in this case map-style datasets
-        self._ds_train = MapStyleDataset(self._train_img, trans_train)
-        self._ds_eval = MapStyleDataset(self._eval_img, trans_eval)
+        self._ds_train = MapStyleDataset(self._train_img, trans_train, self._compressed)
+        self._ds_eval = MapStyleDataset(self._eval_img, trans_eval, self._compressed)
 
     def train_dataloader(self):
         return DataLoader(self._ds_train, batch_size=self._batch_size, num_workers=8, pin_memory=True, prefetch_factor=8, shuffle=True) #TODO adjust parameters if nessesary
