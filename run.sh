@@ -15,4 +15,4 @@ export WORKON_HOME==/cluster/[my_name]/.python_cache
 
 pip3 install --user -r requirements.txt
 
-python3 train.py --cluster --batch_size 8 --lr 0.01 --optim sdg --scheduler none 
+python3 train.py

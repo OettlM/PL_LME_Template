@@ -1,0 +1,7 @@
+location: local
+n_gpus: 1
+batch_size: 4
+
+n_workers: 8
+data_dir: D:/data/...
+result_dir: D:/results/...

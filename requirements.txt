@@ -1,1 +1,6 @@
 pytorch-lightning
+torchvision
+albumentations
+numpy
+wandb
+hydra-core

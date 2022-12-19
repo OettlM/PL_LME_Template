@@ -1,4 +1,5 @@
 import torch
+import torchmetrics
 
 import numpy as np
 import pytorch_lightning as pl
@@ -7,14 +8,14 @@ from networks.ae import Autoencoder
 
 
 class SimpleModule(pl.LightningModule):
-    def __init__(self, lr, optim, scheduler, **kwargs): #TODO add arguments included in parser
+    def __init__(self, lr, optim, scheduler, **kwargs): # simply add new parameters by name here and in the config file
         super().__init__()
         
         self._lr = lr
         self._optim = optim
         self._scheduler = scheduler
 
-        # save all parameters
+        # save all named parameters
         self.save_hyperparameters()
 
         # instantiate the model
@@ -23,17 +24,13 @@ class SimpleModule(pl.LightningModule):
         # create loss and metric functions
         self.loss_f = torch.nn.MSELoss()
         self.metric_f = torch.nn.L1Loss()
-        
 
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("SimpleModule")
-        parser.add_argument("--lr", type=float, default=0.01)
-        parser.add_argument("--optim", type=str, default="sdg")
-        parser.add_argument("--scheduler", type=str, default="none")
-        # TODO add module specific command line arguments
+        # create aggregators (required for ddp training)
+        self._train_loss_agg = torchmetrics.MeanMetric()
+        self._val_loss_agg = torchmetrics.MeanMetric()
+
+        self._val_l1_agg = torchmetrics.MeanMetric()
         
-        return parent_parser
 
     def forward(self, x):
         # the method used for inference
@@ -41,52 +38,42 @@ class SimpleModule(pl.LightningModule):
         return output
 
     def training_step(self, batch, batch_idx):
-        model_in = batch[0].permute(0, 3, 1, 2)
-        label = model_in
-
-        model_out = self._model(model_in)
-
-        train_loss = self.loss_f(model_out, label)
-        self.log("train_loss", train_loss, on_epoch=True, on_step=False)
-
-        train_metric = self.metric_f(model_out, label)
-        self.log("train_metric", train_metric, on_epoch=True, on_step=False)
-
-        #return {"loss": train_loss, "metrics": train_metric}
+        output = self._model(batch)
+        train_loss = self.loss_f(output, batch)
+        
+        self._train_loss_agg.update(train_loss)
         return train_loss
 
     def validation_step(self, batch, batch_idx):
-        # gradients are automatically deactivated here
-        model_in = batch[0].permute(0, 3, 1, 2)
-        label = model_in
+        output = self._model(batch)
+        val_loss = self.loss_f(output, batch)
+        
+        self._val_loss_agg.update(val_loss)
 
-        model_out = self._model(model_in)
-
-        eval_loss = self.loss_f(model_out, label)
-        self.log("eval_loss", eval_loss, on_epoch=True, on_step=False)
-
-        eval_metric = self.metric_f(model_out, label)
-        self.log("eval_metric", eval_metric, on_epoch=True, on_step=False)
-
-        return {"loss": eval_loss, "metrics": eval_metric}
-        #return eval_loss
+        val_metric = self.metric_f(output, batch)
+        self._val_l1_agg.update(val_metric)
+        return val_loss
 
 
-    #def training_epoch_end(self, outputs):
+    def training_epoch_end(self, outputs):
         # required if values returned in the training_steps have to be processed in a specific way
-        # e.g. if the mean of a metric is not sufficient, but the 5th percentile is required
-        #pass
+        self.log(self._train_loss_agg.compute(), "Training Loss")
+        self._train_loss_agg.reset()
+
 
     def validation_epoch_end(self, outputs):
         # required if values returned in the validation_step have to be processed in a specific way
-        # e.g. if the mean of a metric is not sufficient, but the 5th percentile is required
-        metrics = []
-        [metrics.append(s['metrics']) for s in outputs]
-        metrics = np.array(metrics)
+        self.log(self._val_loss_agg.compute(), "Val Loss")
+        self._val_loss_agg.reset()
 
-        if len(metrics) > 0:
-            percs = np.percentile(metrics, [5])
-            self.log("eval_metric_percentile_5", percs[0])
+        self.log(self._val_l1_agg.compute(), "Val F1 Metric")
+        self._val_l1_agg.reset()
+
+        # we could also log example images to wandb here
+        # img = some_example_img
+        # out_img = self._model(img)
+        # self.logger.log_image("Example Image", images=[out_img])
+
 
     def configure_optimizers(self):
         # configure optimizers based on command line parameters

@@ -1,0 +1,7 @@
+location: cluster
+n_gpus: 2
+batch_size: 16
+
+n_workers: 8
+data_dir: /cluster/.../data
+result_dir: /cluster/.../results
