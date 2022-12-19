@@ -15,4 +15,4 @@ export WORKON_HOME==/cluster/[my_name]/.python_cache
 
 pip3 install --user -r requirements.txt
 
-python3 train.py
+python3 train.py location=cluster location.batch_size=16
