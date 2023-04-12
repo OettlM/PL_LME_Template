@@ -7,13 +7,15 @@ import pytorch_lightning as pl
 from networks.ae import Autoencoder
 
 
-class SimpleModule(pl.LightningModule):
-    def __init__(self, lr, optim, scheduler, **kwargs): # simply add new parameters by name here and in the config file
+class SimpleAEModule(pl.LightningModule):
+    def __init__(self, cfg):
         super().__init__()
         
-        self._lr = lr
-        self._optim = optim
-        self._scheduler = scheduler
+        self._lr = cfg.lr
+        self._optim = cfg.optim
+        self._scheduler = cfg.scheduler
+
+        self._log_imgs = cfg.log_images
 
         # save all named parameters
         self.save_hyperparameters()
@@ -57,7 +59,7 @@ class SimpleModule(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         # required if values returned in the training_steps have to be processed in a specific way
-        self.log(self._train_loss_agg.compute(), "Training Loss")
+        self.log(self._train_loss_agg.compute(), "Train Loss")
         self._train_loss_agg.reset()
 
 
@@ -66,18 +68,24 @@ class SimpleModule(pl.LightningModule):
         self.log(self._val_loss_agg.compute(), "Val Loss")
         self._val_loss_agg.reset()
 
-        self.log(self._val_l1_agg.compute(), "Val F1 Metric")
+        self.log(self._val_l1_agg.compute(), "Val L1")
         self._val_l1_agg.reset()
 
         # we could also log example images to wandb here
-        # img = some_example_img
-        # out_img = self._model(img)
-        # self.logger.log_image("Example Image", images=[out_img])
+        if self._log_imgs:
+            with torch.no_grad():
+                vis_img = self.trainer.datamodule.get_vis_img()
+                vis_out = self._model(vis_img.unsqueeze(0).cuda()).cpu()[0]
+                
+                vis_img = vis_img.permute(1,2,0).numpy()
+                vis_out = vis_out.permute(1,2,0).numpy()
+
+                self.logger.log_image("AE example img", images=[vis_img, vis_out])
 
 
     def configure_optimizers(self):
         # configure optimizers based on command line parameters
-        if self._optim == "sdg":
+        if self._optim == "sgd":
             optimizer = torch.optim.SGD(self._model.parameters(), lr=self._lr, momentum=0.95)
         elif self._optim == "adam":
             optimizer = torch.optim.Adam(self._model.parameters(), lr=self._lr)
@@ -87,7 +95,7 @@ class SimpleModule(pl.LightningModule):
         if self._scheduler == "none":
             return optimizer
         elif self._scheduler == "step":
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 100, 0.1)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 20, 0.1)
         # TODO add more options if required
 
         return [optimizer], [scheduler]

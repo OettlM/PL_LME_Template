@@ -1,7 +1,7 @@
-location: cluster
+name: cluster
 n_gpus: 2
 batch_size: 16
 
 n_workers: 8
-data_dir: /cluster/.../data
-result_dir: /cluster/.../results
+data_dir: /cluster/.../data   #TODO replace with your directorys
+result_dir: /cluster/.../results    #TODO replace with your directorys

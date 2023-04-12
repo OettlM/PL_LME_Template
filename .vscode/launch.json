@@ -12,14 +12,16 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Run",
+            "name": "Train",
             "type": "python",
             "request": "launch",
-            "program": "run.py",
+            "program": "train.py",
             "console": "integratedTerminal",
             "args": [
-                "location=pc"
-               ]
+                "location=local",
+                // you can add more parameters for local runs here
+               ],
+            "justMyCode": false
         }
     ]
 }

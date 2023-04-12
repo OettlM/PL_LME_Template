@@ -11,8 +11,8 @@
 #Timelimit format: "hours:minutes:seconds"
 #SBATCH --time=24:00:00
 
-export WORKON_HOME==/cluster/[my_name]/.python_cache
+export WORKON_HOME==/cluster/[my_name]/.python_cache #TODO replace [my_name] with your cluste id
 
 pip3 install --user -r requirements.txt
 
-python3 train.py location=cluster location.batch_size=16
+python3 train.py location=cluster          # you can overwrite parameters here, e.g.  optim=sgd
